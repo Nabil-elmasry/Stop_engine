@@ -1,0 +1,24 @@
+# ✅ ملفات بايثون المؤقتة
+__pycache__/
+*.py[cod]
+
+# ✅ ملفات النماذج المُدرّبة
+*.pkl
+*.joblib
+
+# ✅ ملفات البيانات المؤقتة فقط داخل مجلد data/
+data/*.csv
+data/*.txt
+data/*.json
+
+# ✅ التقارير المؤقتة
+fault_report.txt
+deviation_results.csv
+
+# ✅ بيئة افتراضية (لو موجودة)
+venv/
+.env
+
+# ✅ ملفات النظام
+.DS_Store
+Thumbs.db
