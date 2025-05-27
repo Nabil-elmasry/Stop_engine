@@ -1,0 +1,11 @@
+streamlit>=1.22
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+plotly
+pdfplumber
+pymupdf
+graphviz
+joblib
