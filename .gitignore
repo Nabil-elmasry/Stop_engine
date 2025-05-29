@@ -22,3 +22,6 @@ venv/
 # ✅ ملفات النظام
 .DS_Store
 Thumbs.db
+
+
+log/*.txt
