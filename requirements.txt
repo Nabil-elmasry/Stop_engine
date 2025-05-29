@@ -9,3 +9,4 @@ pdfplumber
 pymupdf
 graphviz
 joblib
+fpdf
