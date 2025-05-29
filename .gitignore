@@ -11,10 +11,14 @@ __pycache__/
 data/*.csv
 data/*.txt
 data/*.json
+data/healthy_sensors.csv
 
 # ✅ التقارير المؤقتة
 fault_report.txt
 deviation_results.csv
+
+
+
 
 # ✅ بيئة افتراضية (لو موجودة)
 venv/
