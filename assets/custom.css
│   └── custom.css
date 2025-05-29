@@ -1,0 +1,51 @@
+/* assets/custom.css */
+
+/* ✅ خلفية ناعمة للتطبيق */
+body {
+    background-color: #f0f4f8;
+}
+
+/* ✅ تحسين شكل العناوين */
+h1, h2, h3 {
+    color: #1f4e79;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+}
+
+/* ✅ صناديق النصوص */
+.stTextInput > div > div > input {
+    background-color: #ffffff;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    padding: 8px;
+    color: #333;
+}
+
+/* ✅ أزرار أنيقة */
+.stButton > button {
+    background: linear-gradient(to right, #36d1dc, #5b86e5);
+    color: white;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6em 1.2em;
+    transition: background 0.3s ease;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(to right, #5b86e5, #36d1dc);
+    transform: scale(1.02);
+}
+
+/* ✅ مربع التنبيهات */
+.stAlert {
+    border-radius: 10px;
+    padding: 10px;
+}
+
+/* ✅ صناديق المعلومات */
+.stMarkdown {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #333;
+}
