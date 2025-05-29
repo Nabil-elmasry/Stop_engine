@@ -1,0 +1,43 @@
+# Pages/4_🧰_Tools/view_logs.py
+
+import streamlit as st
+import os
+import base64
+from datetime import datetime
+
+st.set_page_config(page_title="📄 عرض سجل الأخطاء", layout="wide")
+st.title("📄 عرض وتصدير سجل الأحداث")
+
+log_path = "log/app_log.txt"
+
+# التأكد من وجود الملف
+if not os.path.exists(log_path):
+    st.warning("⚠️ لا يوجد سجل حتى الآن. تأكد أن التطبيق بدأ التسجيل أولًا.")
+else:
+    # عرض محتوى الملف
+    with open(log_path, "r", encoding="utf-8") as f:
+        log_content = f.read()
+
+    st.text_area("📜 محتوى سجل الأحداث:", log_content, height=400)
+
+    # تحويل الملف إلى PDF بسيط (نص فقط)
+    if st.button("⬇️ تحميل السجل كملف PDF"):
+        from fpdf import FPDF
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=10)
+
+        for line in log_content.split("\n"):
+            pdf.cell(200, 5, txt=line, ln=1)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pdf_filename = f"log_report_{timestamp}.pdf"
+        pdf.output(pdf_filename)
+
+        with open(pdf_filename, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+            pdf_href = f'<a href="data:application/pdf;base64,{base64_pdf}" download="{pdf_filename}">📥 اضغط هنا لتحميل التقرير بصيغة PDF</a>'
+            st.markdown(pdf_href, unsafe_allow_html=True)
+
+        os.remove(pdf_filename)
