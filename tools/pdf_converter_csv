@@ -1,0 +1,40 @@
+import streamlit as st
+import pdfplumber
+import pandas as pd
+import base64
+import io
+
+st.set_page_config(page_title="📄 تحويل PDF إلى CSV", layout="wide")
+st.title("📄🔄 تحويل تقرير PDF إلى جدول CSV")
+
+# ✅ رفع الملف
+uploaded_pdf = st.file_uploader("📤 ارفع ملف PDF يحتوي على بيانات حساسات أو تقرير", type=["pdf"])
+
+# ✅ زر التحويل
+if uploaded_pdf and st.button("🔄 تحويل إلى CSV"):
+    try:
+        with pdfplumber.open(uploaded_pdf) as pdf:
+            data = []
+            for page in pdf.pages:
+                table = page.extract_table()
+                if table:
+                    data.extend(table)
+
+        # تحويل إلى DataFrame
+        df = pd.DataFrame(data[1:], columns=data[0])  # الصف الأول رؤوس أعمدة
+        st.success("✅ تم تحويل الملف بنجاح. يمكنك تحميله الآن.")
+        st.dataframe(df)
+
+        # حفظ مؤقت في الذاكرة (وليس كملف حقيقي على السيرفر)
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        csv_bytes = csv_buffer.getvalue().encode()
+        b64 = base64.b64encode(csv_bytes).decode()
+        href = f'<a href="data:file/csv;base64,{b64}" download="converted_data.csv">📥 اضغط هنا لتحميل ملف CSV</a>'
+        st.markdown(href, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"❌ حدث خطأ أثناء التحويل: {e}")
+
+else:
+    st.info("⬆️ برجاء رفع ملف PDF أولاً قبل الضغط على زر التحويل.")
