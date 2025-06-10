@@ -5,6 +5,9 @@ from modules.theme_loader import apply_custom_theme
 
 apply_custom_theme()
 
+st.image("assets/logo.png", width=180)
+
+
 st.set_page_config(page_title="🚀 StopEngine AI - الصفحة الرئيسية", layout="wide")
 
 # ✅ عرض الشعار
