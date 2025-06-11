@@ -13,13 +13,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ======= القائمة الجانبية =======
-st.sidebar.title("قائمة التنقل")
-st.sidebar.page_link("Pages/0_🏠_Landing/landing.py", label="الصفحة الافتتاحية", icon="🏁")
-st.sidebar.page_link("Pages/1_🧠_Training/train_Ai_V3.py", label="🧠 تدريب النموذج", icon="🧠")
-st.sidebar.page_link("Pages/2_📉_Deviation_Check/detect_deviation.py", label="📉 تحليل الانحراف", icon="📉")
-st.sidebar.page_link("Pages/3_📄_Reports/generate_report.py", label="📄 توليد التقارير", icon="📄")
-st.sidebar.page_link("Pages/4_🧰_Tools/cleanup.py", label="🧹 تنظيف المشروع", icon="🧹")
-st.sidebar.page_link("Pages/4_🧰_Tools/zip_uploader.py", label="🗜️ رفع ملفات ZIP", icon="🗜️")
+st.sidebar.title("📂 قائمة التنقل")
+
+st.sidebar.page_link("Pages/landing/landing.py", label="🏁 الصفحة الافتتاحية", icon="🏁")
+st.sidebar.page_link("Pages/training/train_Ai_V3.py", label="🧠 تدريب النموذج", icon="🧠")
+st.sidebar.page_link("Pages/deviation_check/detect_deviation.py", label="📉 تحليل الانحراف", icon="📉")
+st.sidebar.page_link("Pages/reports/generate_report.py", label="📄 توليد التقارير", icon="📄")
+st.sidebar.page_link("Pages/tools/cleanup.py", label="🧹 تنظيف المشروع", icon="🧹")
+st.sidebar.page_link("Pages/tools/zip_uploader.py", label="🗜️ رفع ملفات ZIP", icon="🗜️")
 
 # ======= توقيع أسفل الصفحة =======
 st.markdown("""
