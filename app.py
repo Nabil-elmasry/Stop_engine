@@ -1,28 +1,32 @@
+# StopEngine/app.py
 
 import streamlit as st
-import pdfplumber
-import pandas as pd
 
-st.set_page_config(page_title="Vehicle Diagnosis App", layout="wide")
-st.title("Upload & View Reports")
+# إعداد الصفحة الرئيسية
+st.set_page_config(page_title="تشخيص الأعطال", layout="wide")
 
-def extract_text(pdf_file):
-    with pdfplumber.open(pdf_file) as pdf:
-        return "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+# ======= واجهة العنوان الرئيسية =======
+st.markdown("""
+    <div style="text-align:center; padding: 30px; background: linear-gradient(to right, #f8cdda, #1fc8db); border-radius: 15px;">
+        <h1 style="color:#4B0082;">System Check by AI 💪</h1>
+        <h3 style="color:#2f2f2f;">اختر الصفحة التي تريد الانتقال إليها من القائمة الجانبية</h3>
+    </div>
+""", unsafe_allow_html=True)
 
-sensor_file = st.file_uploader("Upload Sensor Report (PDF)", type="pdf")
-code_file = st.file_uploader("Upload Fault Report (PDF)", type="pdf")
+# ======= القائمة الجانبية =======
+st.sidebar.title("📂 قائمة التنقل")
 
-if sensor_file:
-    st.subheader("Sensor Report Content")
-    sensor_text = extract_text(sensor_file)
-    st.text(sensor_text)
+st.sidebar.page_link("landing/landing.py", label="🏁 الصفحة الافتتاحية", icon="🏁")
+st.sidebar.page_link("training/train_Ai_V3.py", label="🧠 تدريب النموذج", icon="🧠")
+st.sidebar.page_link("deviation_check/detect_deviation.py", label="📉 تحليل الانحراف", icon="📉")
+st.sidebar.page_link("reports/generate_report.py", label="📄 توليد التقارير", icon="📄")
+st.sidebar.page_link("tools/cleanup.py", label="🧹 تنظيف المشروع", icon="🧹")
+st.sidebar.page_link("tools/zip_uploader.py", label="🗜️ رفع ملفات ZIP", icon="🗜️")
 
-if code_file:
-    st.subheader("Fault Report Content")
-    fault_text = extract_text(code_file)
-    st.text(fault_text)
-
-if not sensor_file and not code_file:
-    st.info("Please upload both PDF reports to preview content.")
-
+# ======= التوقيع السفلي =======
+st.markdown("""
+    <br><hr style="border-top: 1px solid #bbb;">
+    <div style="text-align:center; font-size:18px; color:#FF1493;">
+        تنفيذ: Eng. Nabil Elmasry &nbsp; | &nbsp; Powered by AI
+    </div>
+""", unsafe_allow_html=True)
