@@ -18,7 +18,7 @@ st.sidebar.page_link("pages/train_ai.py", label="🧠 تدريب النموذج"
 st.sidebar.page_link("pages/detect_deviation.py", label="📉 تحليل الانحراف", icon="📉")
 st.sidebar.page_link("pages/final_report.py", label="📄 التقرير النهائي", icon="📄")
 st.sidebar.page_link("pages/clean_and_merge.py", label="🧹 دمج وتنظيف البيانات", icon="🧹")
-st.sidebar.page_link("pages/upload_zip_file.py", label="🗜️ رفع ملف ZIP", icon="🗜️")  # ✅ تم التصحيح هنا
+st.sidebar.page_link("pages/upload_zip_files.py", label="🗜️ رفع ملف ZIP", icon="🗜️")  # ✅ تم التصحيح هنا
 
 # ======= التوقيع =======
 st.markdown("""
