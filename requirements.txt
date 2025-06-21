@@ -1,5 +1,5 @@
-#funcation_used_inside_my_project 
-streamlit>=1.22
+
+streamlit
 pandas
 numpy
 scikit-learn
