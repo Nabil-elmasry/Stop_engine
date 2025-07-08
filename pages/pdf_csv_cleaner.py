@@ -6,12 +6,12 @@ st.set_page_config(page_title="تنظيف ملف الحساسات", layout="wide
 st.title("AI Car Diagnosis - Sensor Data Cleaner")
 
 # رفع ملف الحساسات
-uploaded_file = st.file_uploader("ارفع ملف الحساسات (.csv)", type=["csv"])
+uploaded_file = st.file_uploader("ارفع ملف الحساسات (.pdf)", type=["pdf"])
 
 if uploaded_file is not None:
     try:
         # قراءة الملف
-        df = pd.read_csv(uploaded_file)
+        df = pd.read_pdf(uploaded_file)
 
         st.subheader("البيانات الأصلية")
         st.dataframe(df)
