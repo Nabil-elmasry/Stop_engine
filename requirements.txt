@@ -11,4 +11,4 @@ graphviz
 joblib
 fpdf
 PyPDF2
-tabula-py
+
