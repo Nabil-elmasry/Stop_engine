@@ -1,7 +1,16 @@
 import streamlit as st 
 import pandas as pd 
 import re from io 
-import StringIO from pdf2image import convert_from_bytes import pytesseract import tempfile import os
+import StringIO from pdf2image import convert_from_bytes import pytesseract 
+import tempfile 
+import os
+
+
+
+import glob
+import base64
+
+
 
 st.set_page_config(page_title="🧾 تحويل PDF إلى CSV منظم", layout="wide") st.title("🧾 تحويل ملف PDF لقراءات الحساسات إلى CSV نظيف ومنظم")
 
