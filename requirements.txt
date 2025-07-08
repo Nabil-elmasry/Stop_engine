@@ -11,8 +11,5 @@ graphviz
 joblib
 fpdf
 PyPDF2
-
-
-
 PyMuPDF
 
