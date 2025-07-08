@@ -1,56 +1,47 @@
-# pages/pdf_to_cleaned_csv.py
 import streamlit as st
 import pandas as pd
 import re
-from io import StringIO
-from pdf2image import convert_from_bytes
-import pytesseract
-import tempfile
+import fitz  # PyMuPDF
 import base64
 
 st.set_page_config(page_title="🧾 تحويل PDF إلى CSV منظم", layout="wide")
 st.title("🧾 تحويل ملف PDF لقراءات الحساسات إلى CSV نظيف ومنظم")
 
 st.markdown("""
-### 📌 خطوات الاستخدام:
+📌 **خطوات الاستخدام**:
+1. ارفع ملف PDF يحتوي على قراءات الحساسات (من جهاز Launch مثلاً).
+2. سيتم استخراج النص وتنظيمه في شكل جدول.
+3. يمكنك تحميل الملف النهائي كـ CSV لاستخدامه في صفحة كشف الأعطال.
 
-1. ارفع ملف PDF يحتوي على قراءات الحساسات (مثل من جهاز Launch).
-2. سيتم استخراج وتحليل الجدول وتحويله إلى CSV.
-3. سيتم تنظيف البيانات وفصل القيمة عن الوحدة.
-4. يمكنك تحميل الملف النهائي لاستخدامه في كشف الأعطال.
-
-💡 يدعم ملفات PDF التي تحتوي على جداول مطبوعة أو على شكل صور.
+💡 يدعم ملفات PDF التي تحتوي على **نصوص قابلة للنسخ** وليس صور فقط.
 """)
 
 uploaded_pdf = st.file_uploader("📄 ارفع ملف PDF", type=["pdf"])
 
-if uploaded_pdf:
+if uploaded_pdf is not None:
     try:
-        with tempfile.TemporaryDirectory() as path:
-            images = convert_from_bytes(uploaded_pdf.read(), output_folder=path)
-            st.success(f"✅ تم استخراج {len(images)} صفحة من ملف PDF")
+        # قراءة صفحات النص
+        with fitz.open(stream=uploaded_pdf.read(), filetype="pdf") as doc:
+            full_text = ""
+            for page in doc:
+                full_text += page.get_text()
 
-            all_text = ""
-            for img in images:
-                text = pytesseract.image_to_string(img, lang='eng')
-                all_text += text + "\n"
+        st.subheader("📝 النص المستخرج من ملف PDF")
+        st.code(full_text[:1000])  # عرض أول جزء فقط
 
-        st.subheader("📝 معاينة النص المستخرج (أول 1000 حرف)")
-        st.code(all_text[:1000])
-
-        st.markdown("### 📊 تحليل البيانات وتحويلها إلى جدول")
-
-        rows = [line for line in all_text.split("\n") if len(line.strip()) > 5 and re.search(r"\d", line)]
-        data = [re.split(r"\s{2,}|\t+", row.strip()) for row in rows]
+        # تحويل النص إلى جدول
+        rows = [line.strip() for line in full_text.split("\n") if re.search(r"\d", line)]
+        data = [re.split(r"\s{2,}|\t+", row) for row in rows]
         max_len = max(len(row) for row in data)
         data = [row for row in data if len(row) == max_len]
 
         if len(data) >= 2:
             df = pd.DataFrame(data[1:], columns=data[0])
-            st.success("✅ تم تحويل النص إلى جدول منظم")
+
+            st.success("✅ تم تحويل النص إلى جدول")
             st.dataframe(df.head())
 
-            # تنظيف الأعمدة: فصل القيمة عن الوحدة
+            # تنظيف الأعمدة (فصل القيمة عن الوحدة)
             for col in df.columns:
                 unit_col = col.strip() + "_unit"
 
@@ -67,7 +58,7 @@ if uploaded_pdf:
                 df[col] = values
                 df[unit_col] = units
 
-            # محاولة تحويل القيم الرقمية
+            # تحويل القيم الرقمية
             for col in df.columns:
                 try:
                     df[col] = pd.to_numeric(df[col])
@@ -77,17 +68,20 @@ if uploaded_pdf:
             st.subheader("📋 البيانات بعد التنظيف")
             st.dataframe(df.head())
 
+            # تحميل الملف
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="⬇️ تحميل الملف بعد التنظيف (CSV)",
+                label="⬇️ تحميل الملف كـ CSV",
                 data=csv,
                 file_name="Cleaned_Sensor.csv",
                 mime="text/csv"
             )
+
         else:
-            st.error("❌ لم يتم العثور على بيانات قابلة للتحليل داخل PDF.")
+            st.warning("⚠️ لم يتم العثور على بيانات قابلة للتحليل داخل PDF. تأكد أن الملف يحتوي على جدول نصي.")
+
     except Exception as e:
-        st.error("❌ حدث خطأ أثناء التحليل أو التنظيف")
+        st.error("❌ حدث خطأ أثناء قراءة الملف")
         st.exception(e)
 else:
-    st.info("📤 من فضلك ارفع ملف PDF أولاً للبدء")
+    st.info("📤 من فضلك ارفع ملف PDF أولاً")
