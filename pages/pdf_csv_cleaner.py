@@ -1,54 +1,104 @@
-#premary test 
-import streamlit as st
-import pandas as pd
+import streamlit as st 
+import pandas as pd 
+import re from io 
+import StringIO from pdf2image import convert_from_bytes import pytesseract import tempfile import os
 
-st.set_page_config(page_title="تنظيف ملف الحساسات", layout="wide")
-st.title("AI Car Diagnosis - Sensor Data Cleaner")
+st.set_page_config(page_title="🧾 تحويل PDF إلى CSV منظم", layout="wide") st.title("🧾 تحويل ملف PDF لقراءات الحساسات إلى CSV نظيف ومنظم")
 
-# رفع ملف الحساسات
-uploaded_file = st.file_uploader("ارفع ملف الحساسات (.pdf)", type=["pdf"])
+st.markdown("""
 
-if uploaded_file is not None:
-    try:
-        # قراءة الملف
-        df = pd.read_pdf(uploaded_file)
+📌 خطوات الاستخدام:
 
-        st.subheader("البيانات الأصلية")
-        st.dataframe(df)
+1. ارفع ملف PDF يحتوي على قراءات الحساسات (مثل من جهاز Lunch).
 
-        # ====== تنظيف البيانات ======
-        # حذف الصفوف أو الأعمدة الفارغة
-        df_cleaned = df.dropna(how='all')  # حذف الصفوف الفارغة كليًا
-        df_cleaned = df_cleaned.dropna(axis=1, how='all')  # حذف الأعمدة الفارغة كليًا
 
-        # إصلاح الفواصل العشرية (تحويل الفواصل إلى نقاط إن وجدت)
-        df_cleaned = df_cleaned.applymap(
-            lambda x: str(x).replace(',', '.') if isinstance(x, str) else x
-        )
+2. سيتم تحويل الجدول من PDF إلى CSV.
 
-        # محاولة تحويل الأعمدة الرقمية إلى float أو int
-        for col in df_cleaned.columns:
+
+3. سيتم تنظيف البيانات وفصل القيمة عن الوحدة.
+
+
+4. يمكنك تحميل الملف النهائي لاستخدامه في كشف الأعطال.
+
+
+
+💡 يدعم ملفات PDF التي تحتوي على جداول على شكل صور. """)
+
+uploaded_pdf = st.file_uploader("📄 ارفع ملف PDF", type=["pdf"])
+
+if uploaded_pdf: try: # تحويل PDF إلى صور with tempfile.TemporaryDirectory() as path: images = convert_from_bytes(uploaded_pdf.read(), output_folder=path)
+
+st.success(f"✅ تم استخراج {len(images)} صفحة من ملف PDF")
+
+        all_text = ""
+        for i, img in enumerate(images):
+            text = pytesseract.image_to_string(img, lang='eng')
+            all_text += text + "\n"
+
+    # عرض أول جزء من النص
+    st.subheader("📝 جزء من النص المستخرج:")
+    st.code(all_text[:1000])
+
+    # تحويل النص إلى DataFrame عبر التقدير (يفترض وجود جدول بسيط)
+    st.markdown("### 📊 معاينة وتحليل الجدول")
+
+    # تحديد الأسطر عبر السطور التي تحتوي على فواصل أو مسافات
+    rows = [line for line in all_text.split("\n") if len(line.strip()) > 5 and re.search(r"\d", line)]
+
+    # تقسيم السطور إلى أعمدة بناءً على المسافات أو التابات
+    data = [re.split(r"\s{2,}|\t+", row.strip()) for row in rows]
+
+    # إزالة الأسطر غير المتناسقة
+    max_len = max(len(row) for row in data)
+    data = [row for row in data if len(row) == max_len]
+
+    if len(data) >= 2:
+        df = pd.DataFrame(data[1:], columns=data[0])
+
+        st.success("✅ تم تحويل النص إلى جدول")
+        st.dataframe(df.head())
+
+        # تنظيف الأعمدة: فصل القيم عن الوحدات
+        for col in df.columns:
+            unit_col = col.strip() + "_unit"
+
+            def extract_value_and_unit(val):
+                if pd.isna(val): return pd.NA, pd.NA
+                match = re.match(r"([\d\-,\.E+]+)([^\d\s,\.%]+|%)?", str(val).strip())
+                if match:
+                    value = match.group(1).replace(',', '.')
+                    unit = match.group(2) if match.group(2) else ""
+                    return value, unit
+                return val, ""
+
+            values, units = zip(*df[col].map(extract_value_and_unit))
+            df[col] = values
+            df[unit_col] = units
+
+        # تحويل القيم الرقمية
+        for col in df.columns:
             try:
-                df_cleaned[col] = pd.to_numeric(df_cleaned[col], errors='ignore')
+                df[col] = pd.to_numeric(df[col])
             except:
-                pass
+                continue
 
-        st.success("تم تنظيف وتنظيم البيانات بنجاح!")
+        st.subheader("📋 البيانات بعد التنظيف")
+        st.dataframe(df.head())
 
-        st.subheader("البيانات بعد التنظيف")
-        st.dataframe(df_cleaned)
-
-        # ====== زر تحميل الملف ======
-        csv = df_cleaned.to_csv(index=False, encoding='utf-8-sig')
+        # تحميل الملف
+        csv = df.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="تحميل ملف الحساسات المنظف",
+            label="⬇️ تحميل الملف كـ CSV",
             data=csv,
             file_name="Cleaned_Sensor.csv",
-            mime='text/csv'
+            mime="text/csv"
         )
+    else:
+        st.error("❌ لم يتم العثور على جداول قابلة للتحليل داخل الملف.")
 
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء معالجة الملف: {e}")
-else:
-    st.info("يرجى رفع ملف الحساسات أولاً للبدء.")
+except Exception as e:
+    st.error("❌ حدث خطأ أثناء التحويل أو التنظيف")
+    st.exception(e)
+
+else: st.info("📤 من فضلك ارفع ملف PDF أولاً")
 
