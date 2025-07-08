@@ -1,87 +1,76 @@
+# pages/pdf_csv_cleaner.py
+
 import streamlit as st
 import pandas as pd
 import re
-import fitz  # PyMuPDF
 import base64
 
 st.set_page_config(page_title="🧾 تحويل PDF إلى CSV منظم", layout="wide")
 st.title("🧾 تحويل ملف PDF لقراءات الحساسات إلى CSV نظيف ومنظم")
 
 st.markdown("""
-📌 **خطوات الاستخدام**:
-1. ارفع ملف PDF يحتوي على قراءات الحساسات (من جهاز Launch مثلاً).
-2. سيتم استخراج النص وتنظيمه في شكل جدول.
-3. يمكنك تحميل الملف النهائي كـ CSV لاستخدامه في صفحة كشف الأعطال.
+### 📌 خطوات الاستخدام:
+1. ارفع ملف PDF يحتوي على قراءات الحساسات (مثل من جهاز Lunch).
+2. سيتم تحليل النص واستخلاص القيم والوحدات يدويًا.
+3. يمكنك تحميل الملف النهائي لاستخدامه في صفحة كشف الأعطال.
 
-💡 يدعم ملفات PDF التي تحتوي على **نصوص قابلة للنسخ** وليس صور فقط.
+💡 مناسب لملفات PDF النصية فقط (غير المصورة).
 """)
 
-uploaded_pdf = st.file_uploader("📄 ارفع ملف PDF", type=["pdf"])
-
-if uploaded_pdf is not None:
+uploaded_file = st.file_uploader("📄 ارفع ملف PDF", type=["pdf"])
+if uploaded_file:
     try:
-        # قراءة صفحات النص
-        with fitz.open(stream=uploaded_pdf.read(), filetype="pdf") as doc:
-            full_text = ""
-            for page in doc:
-                full_text += page.get_text()
+        import fitz  # PyMuPDF
+        pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        all_text = ""
+        for page in pdf_doc:
+            all_text += page.get_text()
 
-        st.subheader("📝 النص المستخرج من ملف PDF")
-        st.code(full_text[:1000])  # عرض أول جزء فقط
+        st.success("✅ تم استخراج النص من ملف PDF")
+        st.subheader("📝 جزء من النص:")
+        st.code(all_text[:1000])
 
-        # تحويل النص إلى جدول
-        rows = [line.strip() for line in full_text.split("\n") if re.search(r"\d", line)]
-        data = [re.split(r"\s{2,}|\t+", row) for row in rows]
-        max_len = max(len(row) for row in data)
-        data = [row for row in data if len(row) == max_len]
+        # استخراج بيانات جدول القيم
+        start_marker = "Name Value"
+        if start_marker in all_text:
+            table_text = all_text.split(start_marker)[1]
+            rows = table_text.strip().split("\n")
 
-        if len(data) >= 2:
-            df = pd.DataFrame(data[1:], columns=data[0])
+            data = []
+            for line in rows:
+                if re.match(r"^[A-Za-z0-9\-/()#.,% ]+\s+[\S]+", line.strip()):
+                    # فصل بين الاسم والقيمة أو النطاق
+                    parts = re.split(r"\s{2,}", line.strip())
+                    if len(parts) >= 2:
+                        name = parts[0]
+                        value_unit = " ".join(parts[1:])
+                        # استخراج القيمة والوحدة
+                        match = re.match(r"([\d\-.]+)\s*([a-zA-Z%°]+)?", value_unit)
+                        if match:
+                            value = match.group(1)
+                            unit = match.group(2) if match.group(2) else ""
+                        else:
+                            value = value_unit
+                            unit = ""
+                        data.append([name, value, unit])
 
-            st.success("✅ تم تحويل النص إلى جدول")
-            st.dataframe(df.head())
+            if data:
+                df = pd.DataFrame(data, columns=["Sensor", "Value", "Unit"])
+                st.success("✅ تم تحويل النص إلى جدول منظم")
+                st.dataframe(df.head())
 
-            # تنظيف الأعمدة (فصل القيمة عن الوحدة)
-            for col in df.columns:
-                unit_col = col.strip() + "_unit"
-
-                def extract_value_and_unit(val):
-                    if pd.isna(val): return pd.NA, pd.NA
-                    match = re.match(r"([\d\-,\.E+]+)([^\d\s,\.%]+|%)?", str(val).strip())
-                    if match:
-                        value = match.group(1).replace(',', '.')
-                        unit = match.group(2) if match.group(2) else ""
-                        return value, unit
-                    return val, ""
-
-                values, units = zip(*df[col].map(extract_value_and_unit))
-                df[col] = values
-                df[unit_col] = units
-
-            # تحويل القيم الرقمية
-            for col in df.columns:
-                try:
-                    df[col] = pd.to_numeric(df[col])
-                except:
-                    continue
-
-            st.subheader("📋 البيانات بعد التنظيف")
-            st.dataframe(df.head())
-
-            # تحميل الملف
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="⬇️ تحميل الملف كـ CSV",
-                data=csv,
-                file_name="Cleaned_Sensor.csv",
-                mime="text/csv"
-            )
-
+                csv = df.to_csv(index=False).encode('utf-8-sig')
+                b64 = base64.b64encode(csv).decode()
+                href = f'<a href="data:file/csv;base64,{b64}" download="Cleaned_Sensor.csv">⬇️ تحميل الملف المنظم (CSV)</a>'
+                st.markdown("### 📥 تحميل الملف النهائي")
+                st.markdown(href, unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ لم يتم العثور على بيانات حساسات منظمة داخل الملف.")
         else:
-            st.warning("⚠️ لم يتم العثور على بيانات قابلة للتحليل داخل PDF. تأكد أن الملف يحتوي على جدول نصي.")
+            st.warning("⚠️ لم يتم العثور على بداية جدول القيم داخل الملف.")
 
     except Exception as e:
-        st.error("❌ حدث خطأ أثناء قراءة الملف")
+        st.error("❌ حدث خطأ أثناء قراءة الملف:")
         st.exception(e)
 else:
     st.info("📤 من فضلك ارفع ملف PDF أولاً")
