@@ -1,67 +1,76 @@
 import streamlit as st
 import pandas as pd
 import re
-from PyPDF2 import PdfReader
-from io import StringIO
+import fitz  # PyMuPDF
 
 st.set_page_config(page_title="🧾 تحويل PDF إلى CSV منظم", layout="wide")
 st.title("🧾 تحويل ملف PDF لقراءات الحساسات إلى CSV نظيف ومنظم")
 
 st.markdown("""
 ### 📌 خطوات الاستخدام:
-1. ارفع ملف PDF يحتوي على قراءات الحساسات (من جهاز Lunch أو Launch).
-2. سيتم تحويل النص واستخلاص القيم + الوحدة بدقة.
-3. يمكنك تحميل الملف المنظم كـ CSV لاستخدامه في المقارنة النهائية.
+1. ارفع ملف PDF يحتوي على قراءات الحساسات (من جهاز Launch أو مشابهه).
+2. سيتم تحليل النص واستخلاص أسماء الحساسات + القيم + الوحدات.
+3. سيتم تنظيف وتنظيم البيانات تلقائيًا.
+4. يمكنك تحميل الملف النهائي لاستخدامه في صفحة المقارنة مع النموذج.
 
-💡 الكود يحافظ على كل القيم بما فيها 0 أو Not Available لأنها مهمة في التحليل.
+💡 **يدعم ملفات PDF النصية فقط (غير المصورة)**.
 """)
 
 uploaded_pdf = st.file_uploader("📄 ارفع ملف PDF", type=["pdf"])
 
 if uploaded_pdf:
     try:
-        reader = PdfReader(uploaded_pdf)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
+        # قراءة النص من ملف PDF النصي
+        with fitz.open(stream=uploaded_pdf.read(), filetype="pdf") as doc:
+            text = ""
+            for page in doc:
+                text += page.get_text()
 
-        st.subheader("📝 جزء من النص المستخرج:")
+        st.success("✅ تم استخراج النص من ملف PDF")
+
+        st.markdown("### 📝 جزء من النص:")
         st.code(text[:1000])
 
-        # استخراج الحساسات والقيم والوحدات
-        pattern = re.compile(r"([A-Za-z0-9 \-\/\.,()%]+?)\s+([-+]?\d*\.?\d+|0|Not Fixed|Not Available|Available)\s*([a-zA-Z%μVkmhPaA]+)?")
-        matches = pattern.findall(text)
+        # استخراج القيم من النص بناءً على نمط: اسم الحساس -> القيمة -> الوحدة (أو نص)
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        records = []
+        current_sensor = None
 
-        if not matches:
-            st.warning("⚠️ لم يتم العثور على بيانات حساسات منظمة في الملف.")
-        else:
-            data = []
-            for name, value, unit in matches:
-                name = name.strip()
-                value = value.strip()
-                unit = unit.strip() if unit else ""
-                data.append([name, value, unit])
+        for i in range(len(lines) - 2):
+            name_candidate = lines[i]
+            value_candidate = lines[i + 1]
+            unit_candidate = lines[i + 2]
 
-            df = pd.DataFrame(data, columns=["Sensor Name", "Value", "Unit"])
+            # تحقق أن السطر التالي يبدو رقم أو قيمة حساسات
+            if re.match(r"^[-+]?[0-9]*\.?[0-9]+$", value_candidate) or value_candidate.lower() in [
+                "not available", "available", "not fixed", "fixed", "0", "-", "null"
+            ]:
+                current_sensor = name_candidate.strip()
+                records.append({
+                    "Sensor Name": current_sensor,
+                    "Value": value_candidate.strip(),
+                    "Unit": unit_candidate.strip()
+                })
 
-            # تحويل الأرقام
-            df["Value"] = df["Value"].apply(lambda x: x.replace(',', '.') if isinstance(x, str) else x)
-            df["Value"] = pd.to_numeric(df["Value"], errors="ignore")
+        if records:
+            df = pd.DataFrame(records)
 
-            st.success(f"✅ تم استخراج {len(df)} سجل من الحساسات.")
+            st.subheader("📋 البيانات بعد المعالجة:")
             st.dataframe(df)
 
-            # حفظ الملف
-            csv = df.to_csv(index=False).encode("utf-8")
+            # حفظ كـ CSV
+            csv = df.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
                 label="⬇️ تحميل الملف كـ CSV",
                 data=csv,
                 file_name="Cleaned_Sensor.csv",
                 mime="text/csv"
             )
+        else:
+            st.warning("⚠️ لم يتم العثور على بيانات منظمة يمكن استخراجها من الملف.")
 
     except Exception as e:
-        st.error("❌ حدث خطأ أثناء معالجة الملف")
+        st.error("❌ حدث خطأ أثناء معالجة الملف:")
         st.exception(e)
 else:
-    st.info("📤 من فضلك ارفع ملف PDF أولاً")
+    st.info("📥 من فضلك ارفع ملف PDF أولاً")
