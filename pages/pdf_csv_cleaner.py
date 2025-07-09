@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
-import fitz  
-# PyMuPDF
+import fitz  # PyMuPDF
 import base64
 
 st.set_page_config(page_title="🧾 تحويل PDF إلى CSV منظم", layout="wide")
