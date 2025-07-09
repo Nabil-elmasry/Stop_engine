@@ -1,75 +1,67 @@
 import streamlit as st
 import pandas as pd
 import re
-import fitz  # PyMuPDF
-import base64
+from PyPDF2 import PdfReader
+from io import StringIO
 
 st.set_page_config(page_title="🧾 تحويل PDF إلى CSV منظم", layout="wide")
 st.title("🧾 تحويل ملف PDF لقراءات الحساسات إلى CSV نظيف ومنظم")
 
 st.markdown("""
 ### 📌 خطوات الاستخدام:
-1. ارفع ملف PDF يحتوي على قراءات الحساسات (مثل من جهاز Lunch أو Launch).
-2. سيتم استخراج كل القيم - حتى القيم مثل `0`, `Not Available`, `Available`, إلخ.
-3. سيتم توليد جدول باسم + القيمة + الوحدة.
-4. يمكنك تحميل الملف النهائي لاستخدامه في صفحة كشف الأعطال.
+1. ارفع ملف PDF يحتوي على قراءات الحساسات (من جهاز Lunch أو Launch).
+2. سيتم تحويل النص واستخلاص القيم + الوحدة بدقة.
+3. يمكنك تحميل الملف المنظم كـ CSV لاستخدامه في المقارنة النهائية.
 
-💡 يدعم فقط ملفات PDF النصية (وليس المصورة).
+💡 الكود يحافظ على كل القيم بما فيها 0 أو Not Available لأنها مهمة في التحليل.
 """)
 
-uploaded_file = st.file_uploader("📄 ارفع ملف PDF", type=["pdf"])
+uploaded_pdf = st.file_uploader("📄 ارفع ملف PDF", type=["pdf"])
 
-if uploaded_file:
+if uploaded_pdf:
     try:
-        # استخراج النص من PDF باستخدام PyMuPDF
-        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        all_text = ""
-        for page in doc:
-            all_text += page.get_text()
+        reader = PdfReader(uploaded_pdf)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
 
-        st.success("✅ تم استخراج النص من ملف PDF")
-        st.markdown("### 📝 جزء من النص المستخرج:")
-        st.code(all_text[:1000])
+        st.subheader("📝 جزء من النص المستخرج:")
+        st.code(text[:1000])
 
-        # استخراج أسماء الحساسات والقيم والوحدات بناءً على نمط (Name, Value, Unit)
-        lines = all_text.split("\n")
-        sensor_data = []
-        i = 0
-        while i < len(lines) - 2:
-            name = lines[i].strip()
-            value = lines[i+1].strip()
-            unit = lines[i+2].strip()
+        # استخراج الحساسات والقيم والوحدات
+        pattern = re.compile(r"([A-Za-z0-9 \-\/\.,()%]+?)\s+([-+]?\d*\.?\d+|0|Not Fixed|Not Available|Available)\s*([a-zA-Z%μVkmhPaA]+)?")
+        matches = pattern.findall(text)
 
-            # فلتر مبدأي: تجاهل الأسطر الفارغة فقط
-            if name and value:
-                sensor_data.append({
-                    "Sensor Name": name,
-                    "Value": value,
-                    "Unit": unit if unit.lower() not in ["value", "unit", name.lower()] else ""
-                })
-                i += 3
-            else:
-                i += 1
+        if not matches:
+            st.warning("⚠️ لم يتم العثور على بيانات حساسات منظمة في الملف.")
+        else:
+            data = []
+            for name, value, unit in matches:
+                name = name.strip()
+                value = value.strip()
+                unit = unit.strip() if unit else ""
+                data.append([name, value, unit])
 
-        if sensor_data:
-            df = pd.DataFrame(sensor_data)
-            st.success(f"✅ تم استخراج {len(df)} قراءة حساسات")
-            st.subheader("📊 البيانات المنظمة")
+            df = pd.DataFrame(data, columns=["Sensor Name", "Value", "Unit"])
+
+            # تحويل الأرقام
+            df["Value"] = df["Value"].apply(lambda x: x.replace(',', '.') if isinstance(x, str) else x)
+            df["Value"] = pd.to_numeric(df["Value"], errors="ignore")
+
+            st.success(f"✅ تم استخراج {len(df)} سجل من الحساسات.")
             st.dataframe(df)
 
-            # تحميل الملف
-            csv = df.to_csv(index=False).encode('utf-8-sig')
+            # حفظ الملف
+            csv = df.to_csv(index=False).encode("utf-8")
             st.download_button(
-                label="⬇️ تحميل ملف CSV المنظم",
+                label="⬇️ تحميل الملف كـ CSV",
                 data=csv,
-                file_name="Cleaned_Sensors.csv",
+                file_name="Cleaned_Sensor.csv",
                 mime="text/csv"
             )
-        else:
-            st.warning("⚠️ لم يتم العثور على جدول منظم داخل الملف.")
 
     except Exception as e:
-        st.error("❌ حدث خطأ أثناء التحويل")
+        st.error("❌ حدث خطأ أثناء معالجة الملف")
         st.exception(e)
 else:
     st.info("📤 من فضلك ارفع ملف PDF أولاً")
