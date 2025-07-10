@@ -4,7 +4,7 @@ from PIL import Image
 st.set_page_config(page_title="تشخيص الأعطال", layout="wide")
 
 # ======= عرض اللوجو =======
-logo_path = "assets/logo.png"  # غير المسار حسب مكان الصورة
+logo_path = "assets/logo1.png"  # غير المسار حسب مكان الصورة
 logo = Image.open(logo_path)
 
 st.image(logo, width=180)  # يمكنك تغيير الحجم حسب ما تحب
