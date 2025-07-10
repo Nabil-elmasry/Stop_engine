@@ -32,7 +32,7 @@ st.sidebar.page_link("pages/detect_deviation.py", label="📉 تحليل الا�
 st.sidebar.page_link("pages/final_report.py", label="📄 التقرير النهائي", icon="📄")
 st.sidebar.page_link("pages/clean_and_merge.py", label="🧹 دمج وتنظيف البيانات", icon="🧹")
 st.sidebar.page_link("pages/upload_zip_files.py", label="🗜️ رفع ملف ZIP", icon="🗜️")
-st.sidebar.page_link("pages/readme_viewer.py", label="📘 دليل الاستخدام", icon="📘")  # ✅ صفحة الشرح
+st.sidebar.page_link("pages/readme.py", label="📘 دليل الاستخدام", icon="📘")  # ✅ صفحة الشرح
 
 # ======= التوقيع =======
 st.markdown("""
