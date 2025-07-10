@@ -1,7 +1,16 @@
 import streamlit as st
 from PIL import Image
 
-st.set_page_config(page_title="تشخيص الأعطال", layout="wide")
+
+
+
+st.set_page_config(
+    page_title="تشخيص الأعطال",
+    layout="wide",
+    initial_sidebar_state="collapsed"  # ✅ ده بيخلي الشريط الجانبي مقفول مبدئيًا
+)
+
+
 
 # ======= عرض اللوجو =======
 logo_path = "assets/logo1.png"  # غير المسار حسب مكان الصورة
