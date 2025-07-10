@@ -1,22 +1,16 @@
 import streamlit as st
 from PIL import Image
 
-
-
-
 st.set_page_config(
     page_title="تشخيص الأعطال",
     layout="wide",
-    initial_sidebar_state="collapsed"  # ✅ ده بيخلي الشريط الجانبي مقفول مبدئيًا
+    initial_sidebar_state="collapsed"
 )
 
-
-
 # ======= عرض اللوجو =======
-logo_path = "assets/logo1.png"  # غير المسار حسب مكان الصورة
+logo_path = "assets/logo1.png"
 logo = Image.open(logo_path)
-
-st.image(logo, width=180)  # يمكنك تغيير الحجم حسب ما تحب
+st.image(logo, width=180)
 
 # ======= العنوان =======
 st.markdown("""
@@ -26,15 +20,19 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# ======= نبذة مختصرة مع أيقونات جذابة =======
+st.markdown("### 🚀 نظرة سريعة على المشروع")
+st.info("📘 StopEngine AI هو نظام ذكي بيحلل قراءات الحساسات ويقارنها بالموديل السليم للكشف المبكر عن الأعطال.\n\n📄 لشرح مفصل، توجه إلى صفحة **📘 دليل الاستخدام** من القائمة الجانبية.")
+
 # ======= القائمة الجانبية =======
 st.sidebar.title("📁 صفحات المشروع")
-
 st.sidebar.page_link("pages/landing.py", label="🏁 الصفحة الافتتاحية", icon="🏁")
 st.sidebar.page_link("pages/train_ai.py", label="🧠 تدريب النموذج", icon="🧠")
 st.sidebar.page_link("pages/detect_deviation.py", label="📉 تحليل الانحراف", icon="📉")
 st.sidebar.page_link("pages/final_report.py", label="📄 التقرير النهائي", icon="📄")
 st.sidebar.page_link("pages/clean_and_merge.py", label="🧹 دمج وتنظيف البيانات", icon="🧹")
 st.sidebar.page_link("pages/upload_zip_files.py", label="🗜️ رفع ملف ZIP", icon="🗜️")
+st.sidebar.page_link("pages/readme_viewer.py", label="📘 دليل الاستخدام", icon="📘")  # ✅ صفحة الشرح
 
 # ======= التوقيع =======
 st.markdown("""
