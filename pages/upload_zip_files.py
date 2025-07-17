@@ -1,5 +1,3 @@
-# pages/upload_zip_files.py
-
 import streamlit as st
 import zipfile
 import os
