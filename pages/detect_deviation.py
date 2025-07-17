@@ -9,7 +9,7 @@ from Tools.auto_theme_injector import apply_custom_theme
 apply_custom_theme()
 
 # المسارات
-MODEL_PATH = "Modules/trained.pkl"
+MODEL_PATH = "Modules/trained_model.pkl"
 LOG_PATH = "Logs/deviation_log.txt"
 
 # دالة لحساب الفروقات بين القيم المتوقعة والحقيقية
@@ -33,6 +33,7 @@ def detect_deviation(uploaded_df, model):
 def log_deviations(df):
     if df.empty:
         return
+    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)  # إنشاء مجلد Logs إذا لم يكن موجودًا
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"\n--- Deviation Detected @ {datetime.now()} ---\n")
         f.write(df.to_string(index=False))
@@ -64,6 +65,7 @@ if uploaded_file:
             if not deviations.empty:
                 st.subheader("📉 القيم المنحرفة المكتشفة")
                 st.dataframe(deviations)
+                st.markdown(f"🔢 عدد القراءات المنحرفة: `{len(deviations)}`")
                 log_deviations(deviations)
                 st.success("✅ تم تسجيل القيم المنحرفة في ملف اللوج.")
             else:
