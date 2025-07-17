@@ -3,7 +3,8 @@
 import os
 
 TEMPLATE_IMPORT = "import streamlit as st\nfrom modules.theme_loader import apply_custom_theme\n\napply_custom_theme()\n"
-PAGES_FOLDER = "Pages"
+PAGES_FOLDER = os.path.join(os.path.dirname(__file__), "..", "Pages")
+PAGES_FOLDER = os.path.abspath(PAGES_FOLDER)
 
 for filename in os.listdir(PAGES_FOLDER):
     if filename.endswith(".py"):
