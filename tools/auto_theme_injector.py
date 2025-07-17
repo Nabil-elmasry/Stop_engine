@@ -1,7 +1,10 @@
 import os
 
 TEMPLATE_IMPORT = "import streamlit as st\nfrom modules.theme_loader import apply_custom_theme\n\napply_custom_theme()\n"
-PAGES_FOLDER = "Pages"
+
+PAGES_FOLDER = "pages"
+
+
 
 if os.path.exists(PAGES_FOLDER):
     for filename in os.listdir(PAGES_FOLDER):
