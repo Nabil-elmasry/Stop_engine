@@ -8,8 +8,8 @@ from sklearn.metrics import mean_squared_error
 
 
 
-from tools.auto_theme_injector import apply_custom_theme
-apply_custom_theme()
+#from tools.auto_theme_injector #import apply_custom_theme
+#apply_custom_theme()
 
 
 # المسارات
