@@ -1,53 +1,49 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import os
+import numpy as np
+from modules.logger import logger  # ✅ تفعيل اللوج
 
-from modules.logger import log_event
-from modules.themes_leader import apply_custom_theme
+st.set_page_config(page_title="Detect Deviation", layout="wide")
 
-apply_custom_theme()
+st.title("📊 Detect Sensor Deviation from Normal Behavior")
 
-st.title("🔍 StopEngine AI - كشف عن الأعطال بالذكاء الاصطناعي")
+uploaded_model = st.file_uploader("🔍 Upload the trained model (.pkl)", type=["pkl"])
+uploaded_file = st.file_uploader("📂 Upload sensor data to analyze (.csv)", type=["csv"])
 
-uploaded_file = st.file_uploader("ارفع ملف الحساسات هنا (CSV فقط)", type="csv")
-
-if uploaded_file is not None:
+if uploaded_model and uploaded_file:
     try:
-        input_data = pd.read_csv(uploaded_file)
+        logger.info("🔁 Loading model...")  # ✅ سجل عملية تحميل الموديل
+        model = joblib.load(uploaded_model)
+        logger.info("✅ Model loaded successfully.")
 
-        model_path = os.path.join("modules", "trained_model.pkl")
-        if not os.path.exists(model_path):
-            st.error("⚠️ ملف النموذج المدرب غير موجود داخل مجلد modules.")
-        else:
-            model = joblib.load(model_path)
+        logger.info("📥 Reading sensor data file...")
+        df = pd.read_csv(uploaded_file)
+        logger.info(f"✅ Sensor data file read successfully. Shape: {df.shape}")
 
-            # توقع القيم بناءً على النموذج المدرب
-            predicted_values = model.predict(input_data)
+        if 'timestamp' in df.columns:
+            df = df.drop(columns=['timestamp'])
+            logger.info("🕒 'timestamp' column dropped.")
 
-            # حساب الفرق (الانحراف)
-            deviation = abs(input_data.values - predicted_values)
+        logger.info("🧮 Starting prediction on input data...")
+        reconstructed = model.inverse_transform(model.transform(df))
+        reconstruction_error = np.mean((df - reconstructed) ** 2, axis=1)
+        df['Deviation Score'] = reconstruction_error
+        logger.info("✅ Deviation scores calculated.")
 
-            # إنشاء جدول بالنتائج
-            deviation_df = pd.DataFrame(deviation, columns=input_data.columns)
+        threshold = st.slider("🚦 Deviation threshold", float(df['Deviation Score'].min()), float(df['Deviation Score'].max()), float(df['Deviation Score'].mean()))
 
-            # عرض النتائج
-            st.subheader("📊 نتائج التحليل (الانحراف لكل حساس):")
-            st.dataframe(deviation_df)
+        outliers = df[df['Deviation Score'] > threshold]
+        st.subheader("⚠️ Detected Outliers")
+        st.dataframe(outliers)
 
-            # مستوى الانحراف العام
-            average_deviation = deviation_df.mean().mean()
-            st.markdown(f"### ✅ متوسط الانحراف الكلي: `{average_deviation:.3f}`")
+        st.subheader("📈 All Sensor Data with Deviation Scores")
+        st.dataframe(df)
 
-            # تفسير النتيجة
-            threshold = 0.5  # تقدر تعدله حسب تجربتك
-            if average_deviation > threshold:
-                st.error("🚨 ⚠️ هناك احتمال بوجود عطل في أحد الأنظمة. يُفضل الفحص اليدوي.")
-            else:
-                st.success("✅ قراءات الحساسات تبدو طبيعية. لا يوجد علامات واضحة على الأعطال.")
-
-            log_event("تم الكشف عن انحراف في البيانات بنجاح")
+        logger.info(f"📊 {len(outliers)} outliers detected out of {len(df)} records.")
 
     except Exception as e:
-        st.error(f"حدث خطأ أثناء تحليل البيانات: {e}")
-        log_event(f"خطأ أثناء التحليل: {e}")
+        logger.error(f"❌ Error in processing: {e}")
+        st.error("❌ An error occurred while processing the files. Please check the format and try again.")
+else:
+    st.info("📤 Please upload both a trained model and sensor data file to proceed.")
