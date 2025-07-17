@@ -2,48 +2,69 @@ import streamlit as st
 import pandas as pd
 import joblib
 import numpy as np
-from modules.logger import logger  # ✅ تفعيل اللوج
+import os
+import logging
+from tools.apply_custom_theme import apply_custom_theme
 
-st.set_page_config(page_title="Detect Deviation", layout="wide")
+apply_custom_theme()
 
-st.title("📊 Detect Sensor Deviation from Normal Behavior")
+# إعداد اللوج
+log_file_path = "logs/deviation_log.txt"
+os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+logging.basicConfig(
+    filename=log_file_path,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-uploaded_model = st.file_uploader("🔍 Upload the trained model (.pkl)", type=["pkl"])
-uploaded_file = st.file_uploader("📂 Upload sensor data to analyze (.csv)", type=["csv"])
+st.title("📉 كشف القيم المنحرفة في قراءات الحساسات")
 
-if uploaded_model and uploaded_file:
+# تحميل النموذج المدرب مسبقًا
+MODEL_PATH = "models/sensor_model.pkl"
+if not os.path.exists(MODEL_PATH):
+    st.error("⚠️ ملف النموذج غير موجود. تأكد من وجوده داخل مجلد models.")
+    st.stop()
+
+model = joblib.load(MODEL_PATH)
+
+uploaded_file = st.file_uploader("📤 ارفع ملف CSV به قراءات الحساسات (بها مشكلة):", type=["csv"])
+
+if uploaded_file is not None:
     try:
-        logger.info("🔁 Loading model...")  # ✅ سجل عملية تحميل الموديل
-        model = joblib.load(uploaded_model)
-        logger.info("✅ Model loaded successfully.")
-
-        logger.info("📥 Reading sensor data file...")
         df = pd.read_csv(uploaded_file)
-        logger.info(f"✅ Sensor data file read successfully. Shape: {df.shape}")
 
-        if 'timestamp' in df.columns:
-            df = df.drop(columns=['timestamp'])
-            logger.info("🕒 'timestamp' column dropped.")
+        if 'Sensor Name' not in df.columns or 'Value' not in df.columns:
+            st.error("❌ تأكد أن الملف يحتوي على الأعمدة: Sensor Name و Value")
+            st.stop()
 
-        logger.info("🧮 Starting prediction on input data...")
-        reconstructed = model.inverse_transform(model.transform(df))
-        reconstruction_error = np.mean((df - reconstructed) ** 2, axis=1)
-        df['Deviation Score'] = reconstruction_error
-        logger.info("✅ Deviation scores calculated.")
+        # تحويل القيم إلى float إذا أمكن
+        df["Value"] = pd.to_numeric(df["Value"], errors='coerce')
 
-        threshold = st.slider("🚦 Deviation threshold", float(df['Deviation Score'].min()), float(df['Deviation Score'].max()), float(df['Deviation Score'].mean()))
+        # معالجة البيانات
+        X = df["Value"].values.reshape(-1, 1)
+        y_pred = model.predict(X)
+        error = np.abs(X.flatten() - y_pred.flatten())
 
-        outliers = df[df['Deviation Score'] > threshold]
-        st.subheader("⚠️ Detected Outliers")
-        st.dataframe(outliers)
+        # حساب الانحراف بناءً على Threshold تلقائي
+        threshold = np.percentile(error, 85)  # تعديل النسبة حسب دقة النموذج
+        df["Predicted"] = y_pred
+        df["Deviation"] = error
+        df["Is Deviated"] = df["Deviation"] > threshold
 
-        st.subheader("📈 All Sensor Data with Deviation Scores")
-        st.dataframe(df)
+        # عرض القيم المنحرفة فقط
+        deviated_df = df[df["Is Deviated"]]
 
-        logger.info(f"📊 {len(outliers)} outliers detected out of {len(df)} records.")
+        if not deviated_df.empty:
+            st.subheader("🔍 القيم المنحرفة المكتشفة:")
+            st.dataframe(deviated_df[["Sensor Name", "Value", "Predicted", "Deviation"]])
+
+            # حفظ في لوج
+            for _, row in deviated_df.iterrows():
+                logging.info(f"انحراف: {row['Sensor Name']} - القيمة: {row['Value']} - المتوقعة: {row['Predicted']:.2f} - الانحراف: {row['Deviation']:.2f}")
+
+        else:
+            st.success("✅ لا توجد قيم منحرفة واضحة في البيانات المرفوعة.")
 
     except Exception as e:
-        logger.error(f"❌ Error in processing: {e}")
-        st.error("❌ An error occurred while processing the files. Please check the format and try again.")
-else:
-    st.info("📤 Please upload both a trained model and sensor data file to proceed.")
+        st.error("❌ حدث خطأ أثناء معالجة الملف.")
+        st.exception(e)
