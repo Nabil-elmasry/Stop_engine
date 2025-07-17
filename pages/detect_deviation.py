@@ -13,8 +13,8 @@ from sklearn.metrics import mean_squared_error
 
 
 # المسارات
-MODEL_PATH = "Modules/trained_model.pkl"
-LOG_PATH = "Logs/deviation_log.txt"
+MODEL_PATH = "modules/trained_model.pkl"
+LOG_PATH = "logs/deviation_log.txt"
 
 # دالة: اكتشاف القيم المنحرفة
 def detect_deviation(uploaded_df, model, threshold=0.1):
