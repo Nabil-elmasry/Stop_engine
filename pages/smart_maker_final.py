@@ -9,7 +9,7 @@ st.title("🔧 Smart Maker Final – تحويل فورمات ملفات الحس
 uploaded_file = st.file_uploader("📂 حمّل ملف الحساسات بأي فورمات", type=["csv", "xlsx"])
 
 if uploaded_file:
-    # قراءة الملف بناءً على النوع
+   # قراءة الملف بناءً على النوع
     if uploaded_file.name.endswith(".csv"):
         df_raw = pd.read_csv(uploaded_file)
     else:
