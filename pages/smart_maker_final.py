@@ -2,53 +2,48 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-st.set_page_config(page_title="Smart Maker Final", layout="wide")
+# تحميل الملف المرجعي (اللي اتدرب عليه النموذج)
+@st.cache_data
+def load_reference_file():
+    ref = pd.read_csv("reference_dataset.csv")  # عدّل المسار حسب مكان الملف المرجعي
+    return ref[['Sensor Name', 'Unit']]
 
-st.title("🔧 Smart Maker Final – تحويل فورمات ملفات الحساسات")
+# معالجة الملف الجديد
+def process_file(uploaded_file, reference_units):
+    df = pd.read_csv(uploaded_file)
 
-uploaded_file = st.file_uploader("📂 حمّل ملف الحساسات بأي فورمات", type=["csv", "xlsx"])
+    # حذف الأعمدة الغير مطلوبة زي volume لو مش موجودة في المرجع
+    allowed_sensors = reference_units['Sensor Name'].tolist()
+    df = df[df['Sensor Name'].isin(allowed_sensors)]
+
+    # ملء الوحدات المفقودة من المرجع
+    df = df.merge(reference_units, on='Sensor Name', how='left', suffixes=('', '_ref'))
+    df['Unit'] = df['Unit'].fillna(df['Unit_ref'])
+    df.drop(columns=['Unit_ref'], inplace=True)
+
+    return df
+
+# لتحميل الملف بعد المعالجة
+def generate_download_link(df):
+    output = BytesIO()
+    df.to_csv(output, index=False)
+    return output.getvalue()
+
+# واجهة ستريمليت
+st.title("📊 Smart Maker Final - تنسيق ملف الحساسات")
+
+uploaded_file = st.file_uploader("📁 اختر ملف الحساسات لتحويله", type=["csv"])
 
 if uploaded_file:
-    # قراءة الملف بناءً على النوع
-    if uploaded_file.name.endswith(".csv"):
-        df_raw = pd.read_csv(uploaded_file)
-    else:
-        df_raw = pd.read_excel(uploaded_file)
+    reference_units = load_reference_file()
+    df_processed = process_file(uploaded_file, reference_units)
 
-    st.subheader("📄 عرض البيانات الأصلية")
-    st.dataframe(df_raw, use_container_width=True)
+    st.success("✅ تم تحويل الملف بنجاح!")
+    st.dataframe(df_processed.head())
 
-    # المعالجة الأساسية (مثال بسيط قابل للتعديل حسب النموذج المدرب)
-    try:
-        df_processed = df_raw.copy()
-
-        # إعادة تسمية الأعمدة إن أمكن (تأكد من أسماء أعمدتك الحقيقية)
-        if "Sensor Name" in df_processed.columns:
-            df_processed.rename(columns={"Sensor Name": "Sensor", "Value": "Reading"}, inplace=True)
-
-        # إزالة الأعمدة غير المفيدة للنموذج (مثال فقط)
-        columns_to_keep = ["Sensor", "Reading"]
-        df_processed = df_processed[[col for col in columns_to_keep if col in df_processed.columns]]
-
-        st.subheader("✅ البيانات بعد المعالجة (جاهزة للنموذج)")
-        st.dataframe(df_processed, use_container_width=True)
-
-        # إعداد الملف للتحميل
-        def convert_df_to_csv(df):
-            output = BytesIO()
-            df.to_csv(output, index=False)
-            output.seek(0)
-            return output
-
-        csv_data = convert_df_to_csv(df_processed)
-
-        st.download_button(
-            label="⬇️ تحميل الملف المعالج",
-            data=csv_data,
-            file_name="converted_sensors.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
-
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء المعالجة: {e}")
+    st.download_button(
+        label="⬇️ تحميل الملف بعد المعالجة",
+        data=generate_download_link(df_processed),
+        file_name="sensor_data_final.csv",
+        mime="text/csv"
+    )
