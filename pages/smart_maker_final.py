@@ -1,49 +1,44 @@
-import streamlit as st
 import pandas as pd
-from io import BytesIO
+import pickle
+import difflib
 
-# تحميل الملف المرجعي (اللي اتدرب عليه النموذج)
-@st.cache_data
-def load_reference_file():
-    ref = pd.read_csv("reference_dataset.csv")  # عدّل المسار حسب مكان الملف المرجعي
-    return ref[['Sensor Name', 'Unit']]
+# تحميل بيانات التدريب لاستخراج الوحدات الأصلية
+with open('modules/trained_model.pkl', 'rb') as f:
+    trained_model = pickle.load(f)
 
-# معالجة الملف الجديد
-def process_file(uploaded_file, reference_units):
-    df = pd.read_csv(uploaded_file)
+# نفترض أن التدريب تم على DataFrame يحتوي على أعمدة حساسات بصيغة: Sensor Name | Value | Unit
+trained_df = trained_model['sensor_data']
+reference_units = dict(zip(trained_df['Sensor Name'], trained_df['Unit']))
 
-    # حذف الأعمدة الغير مطلوبة زي volume لو مش موجودة في المرجع
-    allowed_sensors = reference_units['Sensor Name'].tolist()
-    df = df[df['Sensor Name'].isin(allowed_sensors)]
+# تحميل الملف الجديد المراد تحويله
+uploaded_file = 'path/to/your_uploaded_file.csv'
+df = pd.read_csv(uploaded_file)
 
-    # ملء الوحدات المفقودة من المرجع
-    df = df.merge(reference_units, on='Sensor Name', how='left', suffixes=('', '_ref'))
-    df['Unit'] = df['Unit'].fillna(df['Unit_ref'])
-    df.drop(columns=['Unit_ref'], inplace=True)
+# التأكد من وجود الأعمدة المطلوبة
+required_cols = ['Sensor Name', 'Value']
+if not all(col in df.columns for col in required_cols):
+    raise ValueError("الملف يجب أن يحتوي على أعمدة 'Sensor Name' و 'Value' على الأقل.")
 
-    return df
+# إذا لم يوجد عمود وحدة القياس، نضيفه مؤقتًا بقيم فاضية
+if 'Unit' not in df.columns:
+    df['Unit'] = ""
 
-# لتحميل الملف بعد المعالجة
-def generate_download_link(df):
-    output = BytesIO()
-    df.to_csv(output, index=False)
-    return output.getvalue()
+# استكمال الوحدة القياسية من بيانات التدريب
+def get_unit(sensor_name):
+    # نحاول نطابق الاسم مع أقرب اسم من بيانات التدريب
+    match = difflib.get_close_matches(sensor_name, reference_units.keys(), n=1, cutoff=0.8)
+    if match:
+        return reference_units[match[0]]
+    return ""
 
-# واجهة ستريمليت
-st.title("📊 Smart Maker Final - تنسيق ملف الحساسات")
+# تعيين الوحدة لكل حساس إن لم تكن موجودة
+df['Unit'] = df.apply(
+    lambda row: row['Unit'] if pd.notnull(row['Unit']) and row['Unit'] != "" else get_unit(row['Sensor Name']),
+    axis=1
+)
 
-uploaded_file = st.file_uploader("📁 اختر ملف الحساسات لتحويله", type=["csv"])
+# حفظ الملف بعد التنسيق
+output_path = 'standardized_sensor_file.csv'
+df.to_csv(output_path, index=False)
 
-if uploaded_file:
-    reference_units = load_reference_file()
-    df_processed = process_file(uploaded_file, reference_units)
-
-    st.success("✅ تم تحويل الملف بنجاح!")
-    st.dataframe(df_processed.head())
-
-    st.download_button(
-        label="⬇️ تحميل الملف بعد المعالجة",
-        data=generate_download_link(df_processed),
-        file_name="sensor_data_final.csv",
-        mime="text/csv"
-    )
+print(f"✅ تم تحويل الملف وحفظه في: {output_path}")
