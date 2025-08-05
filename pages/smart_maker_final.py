@@ -1,62 +1,66 @@
-# pages/smart_maker_final.py
-
 import streamlit as st
 import pandas as pd
-import joblib
+import pickle
 import os
 
-# تحميل تنسيق الواجهة
-from tools.auto_theme_injector import apply_custom_theme
-apply_custom_theme()
-
 # عنوان الصفحة
-st.title("🔧 تنسيق ملف الحساسات - Smart Maker Final")
+st.title("📊 Smart Maker Final - التحقق من فورمات ملف الحساسات")
 
-# تحميل النموذج المدرب
-MODEL_PATH = "modules/trained_model.pkl"
-if os.path.exists(MODEL_PATH):
-    model = joblib.load(MODEL_PATH)
-    st.success("✅ تم تحميل النموذج المدرب بنجاح.")
-else:
-    st.error(f"❌ لم يتم العثور على النموذج في المسار: {MODEL_PATH}")
+# رفع ملف الحساسات
+sensor_file = st.file_uploader("📁 ارفع ملف الحساسات (CSV)", type="csv")
 
-# تحميل ملف الحساسات
-uploaded_file = st.file_uploader("📂 اختر ملف الحساسات (CSV)", type=["csv"])
-if uploaded_file:
+# رفع ملف النموذج المدرب
+model_file = st.file_uploader("🤖 ارفع ملف النموذج المدرب (.pkl)", type="pkl")
+
+if sensor_file and model_file:
     try:
-        df = pd.read_csv(uploaded_file)
-        st.subheader("📊 عرض أولي للبيانات الأصلية")
-        st.dataframe(df.head())
+        # قراءة ملف الحساسات
+        df_sensor = pd.read_csv(sensor_file)
 
-        # التأكد من وجود نفس أعمدة النموذج
-        if model and hasattr(model, 'feature_names_in_'):
-            expected_columns = list(model.feature_names_in_)
-            st.info(f"📋 الأعمدة المطلوبة بواسطة النموذج: {expected_columns}")
+        # تحميل النموذج المدرب
+        model = pickle.load(model_file)
 
-            # الاحتفاظ فقط بالأعمدة المطلوبة
-            formatted_df = df.copy()
-            formatted_df = formatted_df.loc[:, formatted_df.columns.isin(expected_columns)]
+        # محاولة استخراج الأعمدة المستخدمة أثناء التدريب
+        if hasattr(model, 'feature_names_in_'):
+            model_columns = list(model.feature_names_in_)
+        elif hasattr(model, 'columns'):
+            model_columns = list(model.columns)
+        else:
+            st.warning("❗ لم نتمكن من استخراج أسماء الأعمدة من النموذج.")
+            model_columns = []
 
-            # التحقق من وجود كل الأعمدة
-            missing_cols = set(expected_columns) - set(formatted_df.columns)
-            for col in missing_cols:
-                formatted_df[col] = 0.0  # ملء القيم الناقصة بصفر
+        # مقارنة الأعمدة
+        sensor_columns = df_sensor.columns.tolist()
+        missing_in_sensor = [col for col in model_columns if col not in sensor_columns]
+        extra_in_sensor = [col for col in sensor_columns if col not in model_columns]
 
-            # إعادة ترتيب الأعمدة
-            formatted_df = formatted_df[expected_columns]
+        st.subheader("📌 مقارنة الأعمدة:")
 
-            st.subheader("📁 البيانات بعد التنسيق")
-            st.dataframe(formatted_df.head())
+        if not missing_in_sensor and not extra_in_sensor:
+            st.success("✅ الأعمدة متطابقة مع النموذج المدرب.")
+        else:
+            if missing_in_sensor:
+                st.error("❌ الأعمدة التالية مفقودة في ملف الحساسات:")
+                st.write(missing_in_sensor)
 
-            # تحميل الملف المنسق
-            csv_download = formatted_df.to_csv(index=False).encode("utf-8")
+            if extra_in_sensor:
+                st.warning("⚠️ الأعمدة التالية زائدة في ملف الحساسات:")
+                st.write(extra_in_sensor)
+
+        # عرض الملف
+        with st.expander("📄 عرض البيانات المحمّلة"):
+            st.dataframe(df_sensor)
+
+        # تصدير الملف المعدل إن أردت (نفسه هنا بدون تعديل فعلي)
+        if st.button("📥 تحميل نسخة من الملف"):
             st.download_button(
-                label="⬇️ تحميل الملف المنسق",
-                data=csv_download,
-                file_name="formatted_sensors.csv",
+                label="⬇️ اضغط لتحميل الملف",
+                data=df_sensor.to_csv(index=False).encode('utf-8'),
+                file_name="formatted_sensor.csv",
                 mime="text/csv"
             )
-        else:
-            st.warning("⚠️ النموذج لا يحتوي على معلومات الأعمدة أو لم يتم تحميله.")
+
     except Exception as e:
-        st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
+        st.error(f"❌ حصل خطأ أثناء تحميل النموذج أو البيانات: {e}")
+else:
+    st.info("⬆️ من فضلك ارفع ملف الحساسات وملف النموذج المدرب أولاً.")
