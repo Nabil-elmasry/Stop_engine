@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import pickle
-import os
 
 # عنوان الصفحة
-st.title("📊 Smart Maker Final - التحقق من فورمات ملف الحساسات")
+st.title("📊 Smart Maker Final - تجهيز ملف الحساسات للتنبؤ")
 
 # رفع ملف الحساسات
 sensor_file = st.file_uploader("📁 ارفع ملف الحساسات (CSV)", type="csv")
@@ -20,14 +19,12 @@ if sensor_file and model_file:
         # تحميل النموذج المدرب
         model = pickle.load(model_file)
 
-        # محاولة استخراج الأعمدة المستخدمة أثناء التدريب
+        # استخراج الأعمدة المستخدمة في التدريب
         if hasattr(model, 'feature_names_in_'):
             model_columns = list(model.feature_names_in_)
-        elif hasattr(model, 'columns'):
-            model_columns = list(model.columns)
         else:
-            st.warning("❗ لم نتمكن من استخراج أسماء الأعمدة من النموذج.")
-            model_columns = []
+            st.error("❌ النموذج لا يحتوي على أسماء الأعمدة. قد تحتاج إعادة التدريب بطريقة مختلفة.")
+            st.stop()
 
         # مقارنة الأعمدة
         sensor_columns = df_sensor.columns.tolist()
@@ -37,30 +34,44 @@ if sensor_file and model_file:
         st.subheader("📌 مقارنة الأعمدة:")
 
         if not missing_in_sensor and not extra_in_sensor:
-            st.success("✅ الأعمدة متطابقة مع النموذج المدرب.")
+            st.success("✅ الأعمدة متطابقة مع النموذج المدرب. الملف جاهز للتنبؤ.")
+            df_ready = df_sensor.copy()
         else:
             if missing_in_sensor:
-                st.error("❌ الأعمدة التالية مفقودة في ملف الحساسات:")
+                st.error("❌ الأعمدة التالية مفقودة في ملف الحساسات (تمت إضافتها بقيمة 0):")
                 st.write(missing_in_sensor)
 
             if extra_in_sensor:
-                st.warning("⚠️ الأعمدة التالية زائدة في ملف الحساسات:")
+                st.warning("⚠️ الأعمدة التالية زائدة في ملف الحساسات (تم تجاهلها في نسخة التنبؤ):")
                 st.write(extra_in_sensor)
 
-        # عرض الملف
-        with st.expander("📄 عرض البيانات المحمّلة"):
+            # تجهيز نسخة جاهزة للتنبؤ
+            df_ready = df_sensor.copy()
+
+            # إضافة الأعمدة الناقصة بقيمة 0
+            for col in missing_in_sensor:
+                df_ready[col] = 0
+
+            # الاحتفاظ فقط بالأعمدة المطلوبة للتدريب
+            df_ready = df_ready[model_columns]
+
+        # عرض البيانات الأصلية
+        with st.expander("📄 عرض البيانات الأصلية"):
             st.dataframe(df_sensor)
 
-        # تصدير الملف المعدل إن أردت (نفسه هنا بدون تعديل فعلي)
-        if st.button("📥 تحميل نسخة من الملف"):
-            st.download_button(
-                label="⬇️ اضغط لتحميل الملف",
-                data=df_sensor.to_csv(index=False).encode('utf-8'),
-                file_name="formatted_sensor.csv",
-                mime="text/csv"
-            )
+        # عرض البيانات الجاهزة للتنبؤ
+        with st.expander("✅ عرض البيانات الجاهزة للتنبؤ"):
+            st.dataframe(df_ready)
+
+        # تحميل الملف الجاهز للتنبؤ
+        st.download_button(
+            label="⬇️ تحميل الملف الجاهز للتنبؤ",
+            data=df_ready.to_csv(index=False).encode('utf-8'),
+            file_name="ready_for_prediction.csv",
+            mime="text/csv"
+        )
 
     except Exception as e:
-        st.error(f"❌ حصل خطأ أثناء تحميل النموذج أو البيانات: {e}")
+        st.error(f"❌ حصل خطأ أثناء التحضير: {e}")
 else:
     st.info("⬆️ من فضلك ارفع ملف الحساسات وملف النموذج المدرب أولاً.")
